@@ -1,6 +1,6 @@
-.DS_Store
-.csv
-.json
-.html
+*.DS_Store
+*.csv
+*.json
+*.html
 __pycache__/
-.ipynb_checkpoints
+*.ipynb_checkpoints
