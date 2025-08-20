@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Minimalist Africa Map (Leaflet)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html, body { height: 100%; margin: 0; background: #ffffff; }
+    #map { height: 100%; }
+    .ui {
+      position: absolute; z-index: 1000; top: 12px; left: 12px;
+      background: rgba(255,255,255,0.95); padding: 8px 10px; border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); font: 14px/1.3 system-ui, sans-serif;
+    }
+    #fallback { display: none; }
+    .leaflet-tooltip {
+      background: white; border: none; box-shadow: none; font-size: 14px; font-weight: 500;
+    }
+    .leaflet-container {
+      background: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="ui">
+  <div id="status">Loading <code>africa.json</code>…</div>
+  <div id="fallback">
+    Couldn’t auto-load <code>africa.json</code>. Choose it manually:
+    <input type="file" id="fileInput" accept=".json,application/json" />
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  // Countries to highlight and their links
+  const countryLinks = {
+    "Côte d'Ivoire": "https://en.wikipedia.org/wiki/Ivory_Coast",
+    "Benin": "https://en.wikipedia.org/wiki/Benin",
+    "Nigeria": "https://en.wikipedia.org/wiki/Nigeria",
+    "Ethiopia": "https://en.wikipedia.org/wiki/Ethiopia",
+    "Kenya": "https://en.wikipedia.org/wiki/Kenya",
+    "Uganda": "https://en.wikipedia.org/wiki/Uganda",
+    "Burundi": "https://en.wikipedia.org/wiki/Burundi",
+    "Zambia": "https://en.wikipedia.org/wiki/Zambia",
+    "Malawi": "https://en.wikipedia.org/wiki/Malawi",
+    "Zimbabwe": "https://en.wikipedia.org/wiki/Zimbabwe",
+    "Botswana": "https://en.wikipedia.org/wiki/Botswana"
+  };
+
+  const highlightedCountries = Object.keys(countryLinks);
+
+  // Create a minimalist map (no tiles, no interactions)
+  const map = L.map('map', {
+    zoomControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    touchZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    inertia: false
+  }).setView([1.5, 20], 3);
+
+  function baseStyle(feature) {
+    const name = feature.properties?.name;
+    const isHighlighted = highlightedCountries.includes(name);
+    return {
+      fillColor: isHighlighted ? '#019cd8' : '#f0f0f0',
+      color: 'grey',
+      weight: isHighlighted ? 0.7 : 0.3,
+      fillOpacity: isHighlighted ? 0.8 : 0.2
+    };
+  }
+
+  function hoverStyle(feature) {
+    const name = feature.properties?.name;
+    if (!highlightedCountries.includes(name)) return null;
+    return {
+      fillColor: '#e5f6fb',
+      color: 'black',
+      weight: 1.5,
+      fillOpacity: 0.9
+    };
+  }
+
+  function renderGeoJSON(geojson) {
+    const layer = L.geoJSON(geojson, {
+      style: baseStyle,
+      onEachFeature: (feature, lyr) => {
+        const nm = feature.properties?.name;
+        if (nm) lyr.bindTooltip(nm, { sticky: true });
+
+        lyr.on('mouseover', () => {
+          const hs = hoverStyle(feature);
+          if (hs) lyr.setStyle(hs);
+        });
+        lyr.on('mouseout', () => {
+          lyr.setStyle(baseStyle(feature));
+        });
+
+        // Click event with links only for highlighted countries
+        lyr.on('click', () => {
+          if (countryLinks[nm]) {
+            window.open(countryLinks[nm], '_blank');
+          }
+        });
+      }
+    }).addTo(map);
+
+    document.getElementById('status').textContent = 'Loaded.';
+  }
+
+  async function tryAutoLoad() {
+    try {
+      const res = await fetch('africa.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      renderGeoJSON(data);
+    } catch {
+      document.getElementById('status').textContent =
+        'Auto-load failed. Use manual file picker.';
+      document.getElementById('fallback').style.display = 'block';
+    }
+  }
+
+  document.getElementById('fileInput').addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(reader.result);
+        renderGeoJSON(json);
+        document.getElementById('fallback').style.display = 'none';
+      } catch {
+        document.getElementById('status').textContent = 'Invalid JSON file.';
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+
+  tryAutoLoad();
+</script>
+</body>
+</html>

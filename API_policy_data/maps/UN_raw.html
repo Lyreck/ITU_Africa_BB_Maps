@@ -1,0 +1,46 @@
+<html>
+<head >
+<title>Leaflet - UN ClearMap</title>
+<!-- Load Leaflet from CDN -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-
+p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-
+20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<!-- Load Esri Leaflet from CDN -->
+<script src=https://unpkg.com/esri-leaflet@2.1.1/dist/esri-leaflet.js crossorigin=""></script>
+</head>
+<body id="mainpage">
+<div id="divmap" style="width: 100%; height: 100%; border-color: black;">
+</div>
+<script>
+// Initialize the map
+var map = L.map('divmap').setView([10,0], 3);
+L.esri.tiledMapLayer({
+url: "https://geoservices.un.org/arcgis/rest/services/ClearMap_WebGray/MapServer",
+minZoom: 3,
+maxZoom: 6
+}).addTo(map);
+
+// à faire: 1. trouver une map uniquement de l'Afrique validée par UN (NOT FOUND)
+// 2. ne pas autoriser le zoom
+// 3. Faire le coloriage en Bleu
+// 4. Rendre surlignable lorsque l'on hover 
+// 5. Rajouter des liens cliquables sur les 11 pays
+// 6. Si possible retirer les noms des pays non concernés (risque d'être une galère sans nom,
+//    mais ce serait quand même largement plus propre.)
+
+// Pour charger uniquement l'afrique, je pourrais créer une carte sans que ce soit servi comme
+// un web service, mais juste une carte. À voir si en faisant cela on peut
+// 1. Garder de l'interactivité
+// 2. Effectivement sélectionner uniquement l'Afrique (c'est quand même le but au départ).
+
+
+// Define Africa bounds: [SouthWest, NorthEast]
+var africaBounds = [[-35, -20], [38, 55]]; // Adjust as needed
+
+map.setMaxBounds(africaBounds);
+map.fitBounds(africaBounds);
+</script>
+</body>
+</html>
+

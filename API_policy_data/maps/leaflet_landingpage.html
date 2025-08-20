@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Minimalist Africa Map (Leaflet)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@700&display=swap" rel="stylesheet">
+  <style>
+    html, body { height: 100%; margin: 0; background: #ffffff; }
+    #map { height: 100%; }
+    .ui {
+      position: absolute; z-index: 1000; top: 12px; left: 12px;
+      background: rgba(255,255,255,0.95); padding: 8px 10px; border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); font: 14px/1.3 system-ui, sans-serif;
+    }
+    #fallback { display: none; }
+    /* Tooltip style for hover */
+    .leaflet-tooltip-hover {
+      background: white;
+      border: none;
+      box-shadow: none;
+      font-size: 7px;
+      font-weight: 500;
+    }
+    /* Permanent label style */
+    .leaflet-tooltip-label {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        font-size: 3px;
+        font-weight: 700;
+        font-family: 'Noto Sans', Arial, sans-serif;
+        text-transform: uppercase;
+        color: #444444;
+        letter-spacing: 0.5px;
+    }
+
+
+  </style>
+  
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="ui">
+  <div id="status">Loading <code>africa.json</code>…</div>
+  <div id="fallback">
+    Couldn’t auto-load <code>africa.json</code>. Choose it manually:
+    <input type="file" id="fileInput" accept=".json,application/json" />
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  const countryLinks = {
+    "Côte d'Ivoire": "https://datahub.itu.int/data/?e=CIV",
+    "Benin": "https://datahub.itu.int/data/?e=BEN",
+    "Nigeria": "https://datahub.itu.int/data/?e=NGA",
+    "Ethiopia": "https://datahub.itu.int/data/?e=ETH",
+    "Kenya": "https://datahub.itu.int/data/?e=KEN",
+    "Uganda": "https://datahub.itu.int/data/?e=UGA",
+    "Burundi": "https://datahub.itu.int/data/?e=BDI",
+    "Zambia": "https://datahub.itu.int/data/?e=ZMB",
+    "Malawi": "https://datahub.itu.int/data/?e=MWI",
+    "Zimbabwe": "https://datahub.itu.int/data/?e=ZWE",
+    "Botswana": "https://datahub.itu.int/data/?e=BWA"
+  };
+  const highlightedCountries = Object.keys(countryLinks);
+
+  const labelPositions = {
+        "Côte d'Ivoire": [7.6, -5.55],
+        "Benin": [10.5, 2.3],
+        "Nigeria": [9.3, 8.0],
+        "Ethiopia": [8.5, 39.5],
+        "Kenya": [0.4, 37.9],
+        "Uganda": [1.4, 32.8],
+        "Burundi": [-3.5, 29.9],
+        "Zambia": [-14.7, 25.9],
+        "Malawi": [-13.3, 34.3],
+        "Zimbabwe": [-19.0, 29.9],
+        "Botswana": [-22.0, 24.0]
+    };
+
+
+  const map = L.map('map', {
+    zoomControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    touchZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    inertia: false,
+  }).setView([1.5, 20], 3);
+
+  function baseStyle(feature) {
+    const name = feature.properties?.name;
+    const isHighlighted = highlightedCountries.includes(name);
+    return {
+      fillColor: isHighlighted ? '#019cd8' : '#f0f0f0',
+      color: 'grey',
+      weight: isHighlighted ? 0.3 : 0.3,
+      fillOpacity: isHighlighted ? 0.8 : 0.2
+    };
+  }
+
+  function hoverStyle(feature) {
+    const name = feature.properties?.name;
+    if (!highlightedCountries.includes(name)) return null;
+    return {
+      fillColor: '#e5f6fb',
+      color: '#grey',
+      weight: 1.5,
+      fillOpacity: 0.9,
+      smoothFactor: 0.2
+    };
+  }
+
+
+
+  function renderGeoJSON(geojson) {
+    const layer = L.geoJSON(geojson, {
+      style: baseStyle,
+      smoothFactor: 0.5,
+      onEachFeature: (feature, lyr) => {
+        const nm = feature.properties?.name;
+
+        // Hover tooltip (like Folium)
+        lyr.bindTooltip(nm, {
+          sticky: true,
+          className: 'leaflet-tooltip-hover'
+        });
+
+        
+        // Add separate permanent label for highlighted countries
+        if (highlightedCountries.includes(nm)) {
+            const coords = labelPositions[nm] || lyr.getBounds().getCenter();
+            L.tooltip({
+                permanent: true,
+                direction: 'center',
+                className: 'leaflet-tooltip-label'
+            })
+            .setContent(nm.toUpperCase())
+            .setLatLng(coords)
+            .addTo(map);
+        }
+
+
+        lyr.on('mouseover', () => {
+            const hs = hoverStyle(feature);
+            if (hs) lyr.setStyle(hs);
+        });
+        lyr.on('mouseout', () => {
+            lyr.setStyle(baseStyle(feature));
+        });
+
+        lyr.on('click', () => {
+            if (countryLinks[nm]) {
+                window.open(countryLinks[nm], '_blank');
+            }
+        });
+    }
+    }).addTo(map);
+
+ 
+
+
+    document.getElementById('status').textContent = 'Loaded.';
+  }
+
+  async function tryAutoLoad() {
+  try {
+    const res = await fetch('https://gist.githubusercontent.com/1310aditya/35b939f63d9bf7fbafb0ab28eb878388/raw/africa.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    renderGeoJSON(data);
+  } catch (err) {
+    console.error(err);
+    document.getElementById('status').textContent =
+      'Auto-load failed. Use manual file picker.';
+    document.getElementById('fallback').style.display = 'block';
+  }
+}
+
+
+  document.getElementById('fileInput').addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(reader.result);
+        renderGeoJSON(json);
+        document.getElementById('fallback').style.display = 'none';
+      } catch {
+        document.getElementById('status').textContent = 'Invalid JSON file.';
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+
+  tryAutoLoad();
+</script>
+</body>
+</html>
